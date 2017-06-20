@@ -8,7 +8,7 @@
  */
 
 import LiveRange from '@ckeditor/ckeditor5-engine/src/model/liverange';
-import getSchemaValidRanges from '@ckeditor/ckeditor5-core/src/command/helpers/getschemavalidranges';
+import LiveSelection from '@ckeditor/ckeditor5-engine/src/model/liveselection';
 
 /**
  * The inline autoformatting engine. Allows to format various inline patterns. For example,
@@ -32,7 +32,7 @@ export default class InlineAutoformatEngine {
 	 * @param {module:core/editor/editor~Editor} editor Editor instance.
 	 * @param {Function|RegExp} testRegexpOrCallback RegExp or callback to execute on text.
 	 * Provided RegExp *must* have three capture groups. First and third capture groups
-	 * should match opening/closing delimiters. Second capture group should match text to format.
+	 * should match opening/closing delimiters. Second capture group should match the text to format.
 	 *
 	 *		// Matches `**bold text**` pattern.
 	 *		// There are three capturing groups:
@@ -54,97 +54,55 @@ export default class InlineAutoformatEngine {
 	 *			]
 	 *		}
 	 *
-	 * @param {Function|String} attributeOrCallback Name of attribute to apply on matching text or callback for manual
-	 * formatting.
+	 * @param {Function|String} commandOrCallback Name of a command (usually, one implemented by
+	 * {@link module:basic-styles/attributecommand~AttributeCommand}) to execute on matching text or a callback.
 	 *
 	 *		// Use attribute name:
-	 *		new InlineAutoformatEngine( this.editor, /(\*\*)([^\*]+?)(\*\*)$/g, 'bold' );
+	 *		new InlineAutoformatEngine( editor, /(\*\*)([^\*]+?)(\*\*)$/g, 'bold' );
 	 *
 	 *		// Use formatting callback:
-	 *		new InlineAutoformatEngine( this.editor, /(\*\*)([^\*]+?)(\*\*)$/g, ( batch, validRanges ) => {
-	 *			for ( let range of validRanges ) {
-	 *				batch.setAttribute( range, command, true );
-	 *			}
+	 *		new InlineAutoformatEngine( editor, /(\*\*)([^\*]+?)(\*\*)$/g, ( batch, ranges ) => {
+	 *			editor.document.enqueueChanges( () => {
+	 *				for ( let range of editor.document.schema.getValidRanges( ranges, 'myAttribute' ) ) {
+	 *					batch.setAttribute( range, 'myAttribute', true );
+	 *				}
+	 *			} );
 	 *		} );
 	 */
-	constructor( editor, testRegexpOrCallback, attributeOrCallback ) {
-		this.editor = editor;
+	constructor( editor, testRegexpOrCallback, commandOrCallback ) {
+		const doc = editor.document;
 
-		let regExp;
-		let command;
-		let testCallback;
+		const testCallback = getTestCallback( testRegexpOrCallback );
 		let formatCallback;
 
-		if ( testRegexpOrCallback instanceof RegExp ) {
-			regExp = testRegexpOrCallback;
-		} else {
-			testCallback = testRegexpOrCallback;
-		}
+		if ( typeof commandOrCallback == 'string' ) {
+			formatCallback = ( batch, ranges ) => {
+				const initialSelection = LiveSelection.createFromSelection( doc.selection );
 
-		if ( typeof attributeOrCallback == 'string' ) {
-			command = attributeOrCallback;
-		} else {
-			formatCallback = attributeOrCallback;
-		}
+				// See https://github.com/ckeditor/ckeditor5-engine/issues/654.
+				doc.enqueueChanges( () => {
+					doc.selection.setRanges( ranges );
 
-		// A test callback run on changed text.
-		testCallback = testCallback || ( text => {
-			let result;
-			const remove = [];
-			const format = [];
+					editor.execute( commandOrCallback, { batch, forceValue: true } );
 
-			while ( ( result = regExp.exec( text ) ) !== null ) {
-				// There should be full match and 3 capture groups.
-				if ( result && result.length < 4 ) {
-					break;
-				}
+					doc.enqueueChanges( () => {
+						doc.selection.setTo( initialSelection );
+						initialSelection.destroy();
 
-				let {
-					index,
-					'1': leftDel,
-					'2': content,
-					'3': rightDel
-				} = result;
-
-				// Real matched string - there might be some non-capturing groups so we need to recalculate starting index.
-				const found = leftDel + content + rightDel;
-				index += result[ 0 ].length - found.length;
-
-				// Start and End offsets of delimiters to remove.
-				const delStart = [
-					index,
-					index + leftDel.length
-				];
-				const delEnd = [
-					index + leftDel.length + content.length,
-					index + leftDel.length + content.length + rightDel.length
-				];
-
-				remove.push( delStart );
-				remove.push( delEnd );
-
-				format.push( [ index + leftDel.length, index + leftDel.length + content.length ] );
-			}
-
-			return {
-				remove,
-				format
+						editor.execute( commandOrCallback, { batch, forceValue: false } );
+					} );
+				} );
 			};
-		} );
+		} else {
+			formatCallback = commandOrCallback;
+		}
 
-		// A format callback run on matched text.
-		formatCallback = formatCallback || ( ( batch, validRanges ) => {
-			for ( const range of validRanges ) {
-				batch.setAttribute( range, command, true );
-			}
-		} );
-
-		editor.document.on( 'change', ( evt, type ) => {
+		doc.on( 'change', ( evt, type ) => {
 			if ( type !== 'insert' ) {
 				return;
 			}
 
-			const selection = this.editor.document.selection;
+			const selection = doc.selection;
 
 			if ( !selection.isCollapsed || !selection.focus || !selection.focus.parent ) {
 				return;
@@ -185,21 +143,68 @@ export default class InlineAutoformatEngine {
 				return;
 			}
 
-			const batch = editor.document.batch();
+			const batch = doc.batch();
 
-			editor.document.enqueueChanges( () => {
-				const validRanges = getSchemaValidRanges( command, rangesToFormat, editor.document.schema );
+			formatCallback( batch, rangesToFormat );
 
-				// Apply format.
-				formatCallback( batch, validRanges );
-
-				// Remove delimiters.
+			// Remove delimiters.
+			doc.enqueueChanges( () => {
 				for ( const range of rangesToRemove ) {
 					batch.remove( range );
 				}
 			} );
 		} );
 	}
+}
+
+function getTestCallback( testRegexpOrCallback ) {
+	if ( typeof testRegexpOrCallback == 'function' ) {
+		return testRegexpOrCallback;
+	}
+
+	return text => {
+		let result;
+		const remove = [];
+		const format = [];
+
+		while ( ( result = testRegexpOrCallback.exec( text ) ) !== null ) {
+			// There should be full match and 3 capture groups.
+			if ( result && result.length < 4 ) {
+				break;
+			}
+
+			let {
+				index,
+				'1': leftDel,
+				'2': content,
+				'3': rightDel
+			} = result;
+
+			// Real matched string - there might be some non-capturing groups so we need to recalculate starting index.
+			const found = leftDel + content + rightDel;
+			index += result[ 0 ].length - found.length;
+
+			// Start and End offsets of delimiters to remove.
+			const delStart = [
+				index,
+				index + leftDel.length
+			];
+			const delEnd = [
+				index + leftDel.length + content.length,
+				index + leftDel.length + content.length + rightDel.length
+			];
+
+			remove.push( delStart );
+			remove.push( delEnd );
+
+			format.push( [ index + leftDel.length, index + leftDel.length + content.length ] );
+		}
+
+		return {
+			remove,
+			format
+		};
+	};
 }
 
 // Returns whole text from parent element by adding all data from text nodes together.
