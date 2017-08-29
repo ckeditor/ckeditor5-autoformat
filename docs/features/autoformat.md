@@ -3,6 +3,8 @@ title: Autoformatting
 category: features
 ---
 
+{@snippet build-classic-source}
+
 The {@link module:autoformat/autoformat~Auformat} feature allows you to quickly apply formatting to the content you are writing.
 
 <info-box info>
