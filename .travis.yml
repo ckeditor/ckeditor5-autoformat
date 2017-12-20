@@ -15,7 +15,10 @@ before_install:
 - export DISPLAY=:99.0
 - sh -e /etc/init.d/xvfb start
 install:
-- npm install @ckeditor/ckeditor5-dev-tests
+- npm install -g lerna
+- git clone https://github.com/ckeditor/ckeditor5-dev.git
+- cd ckeditor5-dev && git checkout t/ckeditor5/615 && lerna bootstrap && cd packages/ckeditor5-dev-tests && npm link && cd ../../../
+- npm link @ckeditor/ckeditor5-dev-tests
 - ckeditor5-dev-tests-install-dependencies
 script:
 - ckeditor5-dev-tests-travis
