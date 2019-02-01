@@ -24,7 +24,7 @@ class TextTransform extends Plugin {
 		const editor = this.editor;
 
 		editor.config.set( 'textTransform', {
-			actsOn: [ ' ', '.', ',' ],
+			triggers: [ ' ', '.', ',' ],
 			transformations: {
 				'CKeditor': 'CKEditor'
 			}
@@ -56,11 +56,11 @@ class TextTransform extends Plugin {
 
 			const lastCharacter = blockText.slice( selection.focus.offset - 1, selection.focus.offset );
 
-			const actsOn = editor.config.get( 'textTransform.actsOn' );
+			const triggers = editor.config.get( 'textTransform.triggers' );
 			const configured = new Map( Object.entries( editor.config.get( 'textTransform.transformations' ) ) );
 
 			// Only check text after trigger characters.
-			if ( !actsOn.includes( lastCharacter ) ) {
+			if ( !triggers.includes( lastCharacter ) ) {
 				return;
 			}
 
