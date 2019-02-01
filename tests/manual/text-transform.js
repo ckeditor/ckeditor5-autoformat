@@ -23,7 +23,15 @@ class TextTransform extends Plugin {
 	init() {
 		const editor = this.editor;
 
+		editor.config.set( 'textTransform', {
+			actsOn: [ ' ', '.', ',' ],
+			transformations: {
+				'CKeditor': 'CKEditor'
+			}
+		} );
+
 		editor.model.document.on( 'change', ( evt, batch ) => {
+			// Skip transparent batches - might came from collaboration.
 			if ( batch.type == 'transparent' ) {
 				return;
 			}
@@ -44,33 +52,37 @@ class TextTransform extends Plugin {
 			}
 
 			const block = selection.focus.parent;
-			const text = getText( block ).slice( 0, selection.focus.offset );
+			const blockText = getText( block );
 
-			console.log( text );
+			const lastCharacter = blockText.slice( selection.focus.offset - 1, selection.focus.offset );
 
+			const actsOn = editor.config.get( 'textTransform.actsOn' );
 			const configured = new Map( Object.entries( editor.config.get( 'textTransform.transformations' ) ) );
 
-			text.endsWith( 'abc' );
-
-			const found = Array.from( configured.keys() ).find( key => {
-				const b = text.endsWith( key );
-				console.log( text, key, b );
-				return b;
-			} );
-
-			console.log( found );
-
-			if ( found ) {
-				editor.model.enqueueChange( writer => {
-					const changeTo = configured.get( found );
-
-					const start = writer.createPositionAt( block, selection.focus.offset - found.length );
-					const end = writer.createPositionAt( block, selection.focus.offset );
-					const range = writer.createRange( start, end );
-
-					editor.model.insertContent( writer.createText( changeTo ), range );
-				} );
+			// Only check text after trigger characters.
+			if ( !actsOn.includes( lastCharacter ) ) {
+				return;
 			}
+
+			const textToTransformEnd = selection.focus.offset - 1; // Last character is the trigger.
+			const textBeforeInput = blockText.slice( 0, textToTransformEnd );
+
+			const transformation = Array.from( configured.keys() ).find( key => textBeforeInput.endsWith( key ) );
+
+			// Nothing found - end.
+			if ( !transformation ) {
+				return;
+			}
+
+			editor.model.enqueueChange( writer => {
+				const changeTo = configured.get( transformation );
+
+				const start = writer.createPositionAt( block, textToTransformEnd - transformation.length );
+				const end = writer.createPositionAt( block, textToTransformEnd );
+				const range = writer.createRange( start, end );
+
+				editor.model.insertContent( writer.createText( changeTo ), range );
+			} );
 		} );
 	}
 }
@@ -95,9 +107,9 @@ ClassicEditor
 
 				// Order matters as some transformations might contain others:
 				// This has to be first...
-				'--- ': '— ',
+				'---': '— ',
 				// ...and this second as one is contained in another.
-				'-- ': '– '
+				'--': '– '
 			}
 		}
 	} )
