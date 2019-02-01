@@ -34,6 +34,14 @@ class TextTransform extends Plugin {
 	init() {
 		const editor = this.editor;
 
+		const configuredTransformations = this._getTransformationsFromConfig();
+
+		// Array with transformations to check for.
+		const transformations = Array.from( configuredTransformations.keys() );
+
+		// Characters that triggers transformations.
+		const triggers = editor.config.get( 'textTransform.triggers' );
+
 		editor.model.document.on( 'change', ( evt, batch ) => {
 			// Skip transparent batches - might came from collaboration.
 			if ( batch.type == 'transparent' ) {
@@ -60,38 +68,26 @@ class TextTransform extends Plugin {
 
 			const lastCharacter = blockText.slice( selection.focus.offset - 1, selection.focus.offset );
 
-			const triggers = editor.config.get( 'textTransform.triggers' );
-
-			const config = editor.config.get( 'textTransform.transformations' );
-			const configured = new Map();
-
-			Object.keys( config ).forEach( key => {
-				const alternations = config[ key ];
-
-				if ( Array.isArray( alternations ) ) {
-					alternations.forEach( alt => configured.set( alt, key ) );
-				} else {
-					configured.set( alternations, key );
-				}
-			} );
-
 			// Only check text after trigger characters.
 			if ( !triggers.includes( lastCharacter ) ) {
 				return;
 			}
 
-			const textToTransformEnd = selection.focus.offset - 1; // Last character is the trigger.
+			// The change is always associated with one trigger character.
+			const textToTransformEnd = selection.focus.offset - 1;
 			const textBeforeInput = blockText.slice( 0, textToTransformEnd );
 
-			const textToTransform = Array.from( configured.keys() ).find( key => textBeforeInput.endsWith( key ) );
+			// Find if there is anything to transform.
+			const textToTransform = transformations.find( key => textBeforeInput.endsWith( key ) );
 
 			// Nothing found - end.
 			if ( !textToTransform ) {
 				return;
 			}
 
+			// Enqueue change to create an Undo step: this way user can always revert change with CTRL+Z.
 			editor.model.enqueueChange( writer => {
-				const transformTo = configured.get( textToTransform );
+				const transformTo = configuredTransformations.get( textToTransform );
 
 				const start = writer.createPositionAt( block, textToTransformEnd - textToTransform.length );
 				const end = writer.createPositionAt( block, textToTransformEnd );
@@ -101,6 +97,23 @@ class TextTransform extends Plugin {
 				editor.model.insertContent( writer.createText( transformTo ), range );
 			} );
 		} );
+	}
+
+	_getTransformationsFromConfig() {
+		const config = this.editor.config.get( 'textTransform.transformations' );
+		const configuredTransformations = new Map();
+
+		Object.keys( config ).forEach( key => {
+			const alternations = config[ key ];
+
+			if ( Array.isArray( alternations ) ) {
+				alternations.forEach( alt => configuredTransformations.set( alt, key ) );
+			} else {
+				configuredTransformations.set( alternations, key );
+			}
+		} );
+
+		return configuredTransformations;
 	}
 }
 
