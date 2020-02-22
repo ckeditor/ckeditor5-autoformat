@@ -339,33 +339,45 @@ describe( 'Autoformat', () => {
 
 	describe( 'Inline autoformat', () => {
 		it( 'should replace both "**" with bold', () => {
+			const command = editor.commands.get( 'bold' );
+			sinon.spy( command, 'execute' );
+
 			setData( model, '<paragraph>**foobar*[]</paragraph>' );
 			model.change( writer => {
 				writer.insertText( '*', doc.selection.getFirstPosition() );
 			} );
 
+			expect( command.execute.calledOnce ).to.be.true;
 			expect( getData( model ) ).to.equal( '<paragraph><$text bold="true">foobar</$text>[]</paragraph>' );
 		} );
 
 		it( 'should replace both "*" with italic', () => {
+			const command = editor.commands.get( 'italic' );
+			sinon.spy( command, 'execute' );
+
 			setData( model, '<paragraph>*foobar[]</paragraph>' );
 			model.change( writer => {
 				writer.insertText( '*', doc.selection.getFirstPosition() );
 			} );
 
+			expect( command.execute.calledOnce ).to.be.true;
 			expect( getData( model ) ).to.equal( '<paragraph><$text italic="true">foobar</$text>[]</paragraph>' );
 		} );
 
 		it( 'should replace both "`" with code', () => {
+			const command = editor.commands.get( 'code' );
+			sinon.spy( command, 'execute' );
+
 			setData( model, '<paragraph>`foobar[]</paragraph>' );
 			model.change( writer => {
 				writer.insertText( '`', doc.selection.getFirstPosition() );
 			} );
 
+			expect( command.execute.calledOnce ).to.be.true;
 			expect( getData( model ) ).to.equal( '<paragraph><$text code="true">foobar</$text>[]</paragraph>' );
 		} );
 
-		it( 'nothing should be replaces when typing "*"', () => {
+		it( 'nothing should be replaced when typing "*"', () => {
 			setData( model, '<paragraph>foobar[]</paragraph>' );
 			model.change( writer => {
 				writer.insertText( '*', doc.selection.getFirstPosition() );

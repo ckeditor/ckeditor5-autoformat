@@ -61,7 +61,7 @@ describe( 'Autoformat undo integration', () => {
 
 			expect( getData( model ) ).to.equal( '<paragraph><$text bold="true">foobar</$text>[]</paragraph>' );
 			editor.execute( 'undo' );
-			expect( getData( model ) ).to.equal( '<paragraph>**foobar**[]</paragraph>' );
+			expect( getData( model ) ).to.equal( '<paragraph>**[foobar]**</paragraph>' );
 		} );
 
 		it( 'should undo replacing "__" with bold', () => {
@@ -72,7 +72,7 @@ describe( 'Autoformat undo integration', () => {
 
 			expect( getData( model ) ).to.equal( '<paragraph><$text bold="true">foobar</$text>[]</paragraph>' );
 			editor.execute( 'undo' );
-			expect( getData( model ) ).to.equal( '<paragraph>__foobar__[]</paragraph>' );
+			expect( getData( model ) ).to.equal( '<paragraph>__[foobar]__</paragraph>' );
 		} );
 
 		it( 'should undo replacing "*" with italic', () => {
@@ -83,7 +83,7 @@ describe( 'Autoformat undo integration', () => {
 
 			expect( getData( model ) ).to.equal( '<paragraph><$text italic="true">foobar</$text>[]</paragraph>' );
 			editor.execute( 'undo' );
-			expect( getData( model ) ).to.equal( '<paragraph>*foobar*[]</paragraph>' );
+			expect( getData( model ) ).to.equal( '<paragraph>*[foobar]*</paragraph>' );
 		} );
 
 		it( 'should undo replacing "_" with italic', () => {
@@ -94,7 +94,7 @@ describe( 'Autoformat undo integration', () => {
 
 			expect( getData( model ) ).to.equal( '<paragraph><$text italic="true">foobar</$text>[]</paragraph>' );
 			editor.execute( 'undo' );
-			expect( getData( model ) ).to.equal( '<paragraph>_foobar_[]</paragraph>' );
+			expect( getData( model ) ).to.equal( '<paragraph>_[foobar]_</paragraph>' );
 		} );
 
 		it( 'should undo replacing "`" with code', () => {
@@ -105,7 +105,7 @@ describe( 'Autoformat undo integration', () => {
 
 			expect( getData( model ) ).to.equal( '<paragraph><$text code="true">foobar</$text>[]</paragraph>' );
 			editor.execute( 'undo' );
-			expect( getData( model ) ).to.equal( '<paragraph>`foobar`[]</paragraph>' );
+			expect( getData( model ) ).to.equal( '<paragraph>`[foobar]`</paragraph>' );
 		} );
 	} );
 

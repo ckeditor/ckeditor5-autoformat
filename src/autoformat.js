@@ -10,6 +10,7 @@
 import BlockAutoformatEditing from './blockautoformatediting';
 import InlineAutoformatEditing from './inlineautoformatediting';
 import Plugin from '@ckeditor/ckeditor5-core/src/plugin';
+import LiveRange from '@ckeditor/ckeditor5-engine/src/model/liverange';
 
 /**
  * Enables a set of predefined autoformatting actions.
@@ -183,11 +184,16 @@ function getCallbackFunctionForInlineAutoformat( editor, attributeKey ) {
 			return false;
 		}
 
-		const validRanges = editor.model.schema.getValidRanges( rangesToFormat, attributeKey );
+		const oldSelectionRange = LiveRange.fromRange( editor.model.document.selection.getFirstRange() );
 
-		for ( const range of validRanges ) {
-			writer.setAttribute( attributeKey, true, range );
+		for ( const range of rangesToFormat ) {
+			writer.setSelection( range );
+
+			command.execute( { forceValue: true } );
 		}
+
+		writer.setSelection( oldSelectionRange );
+		oldSelectionRange.detach();
 
 		// After applying attribute to the text, remove given attribute from the selection.
 		// This way user is able to type a text without attribute used by auto formatter.
