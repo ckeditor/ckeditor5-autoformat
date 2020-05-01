@@ -1,6 +1,10 @@
 CKEditor 5 autoformat feature
 ========================================
 
+<h3 align=center>⚠⚠ This repository was moved ⚠⚠</h3>
+
+<p align=center>The package was moved to the <a href="https://github.com/ckeditor/ckeditor5/tree/master/packages">main repository</a>.</p>
+
 [![npm version](https://badge.fury.io/js/%40ckeditor%2Fckeditor5-autoformat.svg)](https://www.npmjs.com/package/@ckeditor/ckeditor5-autoformat)
 [![Dependency Status](https://david-dm.org/ckeditor/ckeditor5-autoformat/status.svg)](https://david-dm.org/ckeditor/ckeditor5-autoformat)
 [![devDependency Status](https://david-dm.org/ckeditor/ckeditor5-autoformat/dev-status.svg)](https://david-dm.org/ckeditor/ckeditor5-autoformat?type=dev)
